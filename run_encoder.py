@@ -220,6 +220,7 @@ if __name__ == "__main__":
         "retarfi/economy-watchers-survey-evaluation",
         args.task,
         ews_version="2024.05.2",
+        trust_remote_code=True,
     )
 
     def normalize(example: dict) -> dict:
@@ -257,6 +258,7 @@ if __name__ == "__main__":
         bf16=args.bf16,
     )
     print(result)
+    os.makedirs("results", exist_ok=True)
     with open(f"results/{args.task}-{model_basename}.json", "w") as f:
         json.dump(result, f, indent=2)
     test_dataset = dsd["test"]

@@ -45,6 +45,7 @@ def main(task: str, model: str, shots: int, seed: Optional[int], is_debug: bool)
         "retarfi/economy-watchers-survey-evaluation",
         task,
         ews_version="2024.05.2",
+        trust_remote_code=True,
     )
     test_ds: Dataset = dsd["test"]
     if is_debug:
