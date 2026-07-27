@@ -150,7 +150,7 @@ def train(
 
         # Training
         transformers.logging.set_verbosity(transformers.logging.log_levels[log_level])
-        train_result = trainer.train()
+        trainer.train()
         # print(trainer.state.log_history)
 
         lst_epochs_result: List[Dict[str, float]] = list(
@@ -184,6 +184,10 @@ def train(
             for k, v in best_result.items()
         ]
     )
+    # The reported metrics come from the per-epoch evaluation log at the epoch
+    # with the best validation macro F1; the model saved and used for the
+    # per-example predictions below is the end-of-training state
+    # (save_strategy="no", no mid-training checkpointing).
     best_trainer.save_model(output_dir)
     pred_output = best_trainer.predict(dsd["test"])
     pred_labels: np.ndarray = np.argmax(pred_output.predictions, axis=1)

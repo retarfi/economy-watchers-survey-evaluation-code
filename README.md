@@ -15,7 +15,9 @@ Requires Python 3.9+.
 pip install -r requirements.txt
 ```
 
-Version bounds in `requirements.txt` keep the scripts compatible with the APIs used at experiment time (in particular `datasets<4.0` and `transformers<5.0`; `evaluation_strategy` was renamed in Transformers v5).
+Version bounds in `requirements.txt` keep the scripts compatible with the APIs used at experiment time: `datasets>=2.16,<4.0` (the `trust_remote_code` argument was added in Datasets 2.16, and script-based datasets were removed in 4.x) and `transformers>=4.23,<4.46` (the `evaluation_strategy` and `tokenizer=` Trainer arguments used here were changed in Transformers 4.46).
+
+The dataset loader fetches the source data from Hugging Face Hub in many small requests, so constructing the full dataset without authentication can hit rate limits (HTTP 429). Log in with `huggingface-cli login` or set the `HF_TOKEN` environment variable before the first run.
 
 API keys are read from environment variables (never hard-code keys):
 
@@ -67,3 +69,7 @@ Each raw LLM output is mapped to a label deterministically (`map_prediction` in 
 
 - Generation settings follow the article: temperature 0.0 for GPT and Gemini models, temperature 0.2 (top-p 0.95, repetition penalty 1.05) for llm-jp.
 - The main point estimates in the article were obtained from single runs; repeated-run variability is reported in the Supplementary Information.
+
+## Reproducibility note on encoder training
+
+`run_encoder.py` evaluates the validation and test sets at every epoch and reports the metrics logged at the epoch with the best validation macro F1. It does not checkpoint during training (`save_strategy="no"`), so the model saved at the end of training — and hence the per-example prediction file — corresponds to the end-of-training state. In the runs reported in the article these were consistent: for the DeBERTaV2 prediction files used in the article's bootstrap analysis, macro F1 recomputed from those files was 0.815441 for domain, 0.540968 for sentiment, and 0.553979 for reason, reproducing the values reported in the article after rounding. If you need the saved model itself to correspond to the best validation epoch, enable epoch checkpointing with `load_best_model_at_end=True` and `metric_for_best_model` in `TrainingArguments`.
