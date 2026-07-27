@@ -1,0 +1,13 @@
+datasets
+evaluate
+google-genai
+Levenshtein
+numpy
+openai
+packaging
+pandas
+scikit-learn
+tenacity
+torch
+tqdm
+transformers
