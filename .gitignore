@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# outputs of the evaluation scripts
+results/
+revision/logs/
+revision/demo_set_results.csv
+revision/demo_set_results.md
+revision/kappa_common_subset.md
+revision/label_diagnostics.csv
+revision/label_diagnostics.md

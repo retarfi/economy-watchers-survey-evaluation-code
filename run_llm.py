@@ -40,7 +40,14 @@ def gemini_with_backoff(client: genai.Client, **kwargs):
     return client.models.generate_content(**kwargs).text
 
 
-def main(task: str, model: str, shots: int, seed: Optional[int], is_debug: bool) -> None:
+def main(
+    task: str,
+    model: str,
+    shots: int,
+    seed: Optional[int],
+    is_debug: bool,
+    demo_set: Optional[Path] = None,
+) -> None:
     dsd: DatasetDict = load_dataset(
         "retarfi/economy-watchers-survey-evaluation",
         task,
@@ -79,6 +86,7 @@ def main(task: str, model: str, shots: int, seed: Optional[int], is_debug: bool)
 
     # in context learning
     fmt_context: str = "テキスト: {text}\n答え: {label}"
+    prompt_base: str = prompt
     lst_contexts: list[list[str]] = [[] for _ in range(len(lst_label_id))]
     for i in range(len(dsd["train"])):
         example: dict = dsd["train"][-i]
@@ -99,11 +107,29 @@ def main(task: str, model: str, shots: int, seed: Optional[int], is_debug: bool)
             if i < len(lst_contexts[j]):
                 prompt += lst_contexts[j][i] + "\n"
 
+    # Optionally replace the default demonstrations with a pre-built set
+    # (see revision/make_demo_sets.py). The set named "orig" reproduces the
+    # default demonstrations, which is checked here.
+    str_demo: str = ""
+    if demo_set is not None:
+        dct_demo: dict = json.loads(demo_set.read_text(encoding="utf-8"))
+        assert dct_demo["task"] == task and len(dct_demo["examples"]) == shots
+        prompt_demo: str = prompt_base
+        for example in dct_demo["examples"]:
+            prompt_demo += (
+                fmt_context.format(text=example["text"], label=example["label"]) + "\n"
+            )
+        if dct_demo["name"] == "orig":
+            assert prompt_demo == prompt, "orig demonstration set differs from the default"
+        prompt = prompt_demo
+        str_demo = f"_demo{dct_demo['name']}"
+
     debug: str = "debug_" if is_debug else ""
     str_seed: str = f"_seed{seed}" if seed is not None else ""
     p_output_jsonl: Path = (
         ROOT_DIR
-        / "results" / f"{debug}{task}_{model.replace('.', '')}_{shots}{str_seed}.jsonl"
+        / "results"
+        / f"{debug}{task}_{model.replace('.', '')}_{shots}{str_seed}{str_demo}.jsonl"
     )
     os.makedirs(p_output_jsonl.parent, exist_ok=True)
     df_loaded: pd.DataFrame
@@ -122,7 +148,7 @@ def main(task: str, model: str, shots: int, seed: Optional[int], is_debug: bool)
     if model.startswith("llm-jp-"):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed
-        if seed:
+        if seed is not None:
             set_seed(seed)
         model_name: str = f"llm-jp/{model}"
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -246,6 +272,11 @@ if __name__ == "__main__":
     )
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--seed", type=int)
+    parser.add_argument(
+        "--demo-set",
+        type=Path,
+        help="JSON file of demonstrations replacing the default ones (see revision/)",
+    )
     args = parser.parse_args()
     main(
         task=args.task,
@@ -253,4 +284,5 @@ if __name__ == "__main__":
         shots=args.shots,
         seed=args.seed,
         is_debug=args.debug,
+        demo_set=args.demo_set,
     )
